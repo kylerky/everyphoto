@@ -38,10 +38,10 @@ type annotations struct {
 	Scores []float32 `json:"scores"`
 }
 
-func labelHandler(labels chan labelAnno, quit *sync.WaitGroup) {
+func labelHandler(labels chan labelAnno, quit *sync.WaitGroup, addr string) {
 	defer quit.Done()
 
-	conn, err := net.Dial("tcp", os.Args[2])
+	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		log.Fatal("label handler failed to connect to server:", err)
 		return
@@ -73,10 +73,10 @@ func labelHandler(labels chan labelAnno, quit *sync.WaitGroup) {
 	}
 }
 
-func faceHandler(faces chan faceAnno, quit *sync.WaitGroup) {
+func faceHandler(faces chan faceAnno, quit *sync.WaitGroup, addr string) {
 	defer quit.Done()
 
-	conn, err := net.Dial("tcp", os.Args[2])
+	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		log.Fatal("face handler failed to connect to server: ", err)
 		return
@@ -136,10 +136,10 @@ func faceHandler(faces chan faceAnno, quit *sync.WaitGroup) {
 }
 
 /*
-func webHandler(webs chan webAnno, quit *sync.WaitGroup) {
+func webHandler(webs chan webAnno, quit *sync.WaitGroup, addr string) {
 	defer quit.Done()
 
-	conn, err := net.Dial("tcp", os.Args[2])
+	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		log.Println("web handler failed to connect to server:", err)
 		return
@@ -207,17 +207,17 @@ func main() {
 		}(file, pathCh)
 
 	} else {
-		info, err := os.Stat(os.Args[1])
+		info, err := os.Stat(args[0])
 		if err != nil {
 			log.Fatal("Cannot read file info: ", err)
 		}
 
 		if info.IsDir() {
 			// start the traverser
-			go labeler.Traverse(os.Args[1], pathCh)
+			go labeler.Traverse(args[0], pathCh)
 		} else {
 			concurrancy = 1
-			pathCh <- os.Args[1]
+			pathCh <- args[0]
 			close(pathCh)
 		}
 	}
@@ -231,8 +231,8 @@ func main() {
 	handlers.Add(2)
 	// go handle some label mappings
 	// and also talk to the server
-	go labelHandler(labelCh, &handlers)
-	go faceHandler(faceCh, &handlers)
+	go labelHandler(labelCh, &handlers, args[1])
+	go faceHandler(faceCh, &handlers, args[1])
 	//	go webHandler(webCh, &handlers)
 
 	var labelers sync.WaitGroup
