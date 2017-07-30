@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -165,28 +167,59 @@ func webHandler(webs chan webAnno, quit *sync.WaitGroup) {
 	}
 }
 */
-func main() {
 
-	if len(os.Args) != 3 {
-		fmt.Println("usage: labeler <path> <server_address>")
-		fmt.Println("example: labeler . localhost:8080")
+var isList bool
+
+func init() {
+	flag.BoolVar(&isList, "f", false, "supplying a list of files to label")
+}
+
+func main() {
+	flag.Parse()
+	args := flag.Args()
+	if len(args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: labeler [-f] <path> <server_address>")
+		flag.PrintDefaults()
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "example: labeler . localhost:8080")
 		os.Exit(1)
 	}
 
 	pathCh := make(chan string, concurrancy)
 
-	info, err := os.Stat(os.Args[1])
-	if err != nil {
-		log.Fatal("Cannot read file info: ", err)
-	}
+	if isList {
+		file, err := os.Open(args[0])
+		if err != nil {
+			log.Fatal("Cannot open file", err)
+		}
+		defer file.Close()
 
-	if info.IsDir() {
-		// start the traverser
-		go labeler.Traverse(os.Args[1], pathCh)
+		go func(file *os.File, pathCh chan string) {
+			defer close(pathCh)
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				pathCh <- scanner.Text()
+			}
+
+			if err := scanner.Err(); err != nil {
+				log.Println("Cannot read file: ", err)
+			}
+		}(file, pathCh)
+
 	} else {
-		concurrancy = 1
-		pathCh <- os.Args[1]
-		close(pathCh)
+		info, err := os.Stat(os.Args[1])
+		if err != nil {
+			log.Fatal("Cannot read file info: ", err)
+		}
+
+		if info.IsDir() {
+			// start the traverser
+			go labeler.Traverse(os.Args[1], pathCh)
+		} else {
+			concurrancy = 1
+			pathCh <- os.Args[1]
+			close(pathCh)
+		}
 	}
 
 	// channels for communicating labels
