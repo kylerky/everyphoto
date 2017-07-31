@@ -89,44 +89,74 @@ func faceHandler(faces chan faceAnno, quit *sync.WaitGroup, addr string) {
 		result := annotations{}
 		result.Path = face.path
 
+		emotions := make(map[string]float32)
 		for _, tag := range face.entities {
 			// TODO
 			// label amplifying
-			if tag.JoyLikelihood == gvision.Likelihood_LIKELY || tag.JoyLikelihood == gvision.Likelihood_VERY_LIKELY {
-				result.Labels = append(result.Labels, "joy")
-				result.Scores = append(result.Scores, float32(tag.JoyLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
-				result.Labels = append(result.Labels, "delighted")
-				result.Scores = append(result.Scores, float32(tag.JoyLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
-				result.Labels = append(result.Labels, "happy")
-				result.Scores = append(result.Scores, float32(tag.JoyLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
+
+			if tag.JoyLikelihood != gvision.Likelihood_VERY_UNLIKELY {
+				confidence := float32(tag.JoyLikelihood) / float32(gvision.Likelihood_VERY_LIKELY)
+				if confidence > emotions["joy"] {
+					emotions["joy"] = confidence
+				}
 			}
-			if tag.SorrowLikelihood == gvision.Likelihood_LIKELY || tag.SorrowLikelihood == gvision.Likelihood_VERY_LIKELY {
-				result.Labels = append(result.Labels, "sorrow")
-				result.Scores = append(result.Scores, float32(tag.SorrowLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
-				result.Labels = append(result.Labels, "sad")
-				result.Scores = append(result.Scores, float32(tag.SorrowLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
-				result.Labels = append(result.Labels, "painful")
-				result.Scores = append(result.Scores, float32(tag.SorrowLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
+			if tag.SorrowLikelihood != gvision.Likelihood_VERY_UNLIKELY {
+				confidence := float32(tag.SorrowLikelihood) / float32(gvision.Likelihood_VERY_LIKELY)
+				if confidence > emotions["sorrow"] {
+					emotions["sorrow"] = confidence
+				}
 			}
-			if tag.AngerLikelihood == gvision.Likelihood_LIKELY || tag.AngerLikelihood == gvision.Likelihood_VERY_LIKELY {
-				result.Labels = append(result.Labels, "anger")
-				result.Scores = append(result.Scores, float32(tag.AngerLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
-				result.Labels = append(result.Labels, "indignation")
-				result.Scores = append(result.Scores, float32(tag.AngerLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
-				result.Labels = append(result.Labels, "furious")
-				result.Scores = append(result.Scores, float32(tag.AngerLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
+			if tag.AngerLikelihood != gvision.Likelihood_VERY_UNLIKELY {
+				confidence := float32(tag.AngerLikelihood) / float32(gvision.Likelihood_VERY_LIKELY)
+				if confidence > emotions["anger"] {
+					emotions["anger"] = confidence
+				}
 			}
-			if tag.SurpriseLikelihood == gvision.Likelihood_LIKELY || tag.SurpriseLikelihood == gvision.Likelihood_VERY_LIKELY {
-				result.Labels = append(result.Labels, "surprise")
-				result.Scores = append(result.Scores, float32(tag.SurpriseLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
-				result.Labels = append(result.Labels, "astound")
-				result.Scores = append(result.Scores, float32(tag.SurpriseLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
-				result.Labels = append(result.Labels, "shock")
-				result.Scores = append(result.Scores, float32(tag.SurpriseLikelihood)/float32(gvision.Likelihood_VERY_LIKELY))
+			if tag.SurpriseLikelihood != gvision.Likelihood_VERY_UNLIKELY {
+				confidence := float32(tag.SurpriseLikelihood) / float32(gvision.Likelihood_VERY_LIKELY)
+				if confidence > emotions["surprise"] {
+					emotions["surprise"] = confidence
+				}
 			}
 		}
+
+		if emotions["joy"] > 0 {
+			result.Labels = append(result.Labels, "joy")
+			result.Scores = append(result.Scores, emotions["joy"])
+			result.Labels = append(result.Labels, "delighted")
+			result.Scores = append(result.Scores, emotions["joy"])
+			result.Labels = append(result.Labels, "happy")
+			result.Scores = append(result.Scores, emotions["joy"])
+		}
+
+		if emotions["sorrow"] > 0 {
+			result.Labels = append(result.Labels, "sorrow")
+			result.Scores = append(result.Scores, emotions["sorrow"])
+			result.Labels = append(result.Labels, "sad")
+			result.Scores = append(result.Scores, emotions["sorrow"])
+			result.Labels = append(result.Labels, "painful")
+			result.Scores = append(result.Scores, emotions["sorrow"])
+		}
+
+		if emotions["anger"] > 0 {
+			result.Labels = append(result.Labels, "anger")
+			result.Scores = append(result.Scores, emotions["anger"])
+			result.Labels = append(result.Labels, "indignation")
+			result.Scores = append(result.Scores, emotions["anger"])
+			result.Labels = append(result.Labels, "furious")
+			result.Scores = append(result.Scores, emotions["anger"])
+		}
+
+		if emotions["surprise"] > 0 {
+			result.Labels = append(result.Labels, "surprise")
+			result.Scores = append(result.Scores, emotions["surprise"])
+			result.Labels = append(result.Labels, "astound")
+			result.Scores = append(result.Scores, emotions["surprise"])
+			result.Labels = append(result.Labels, "shock")
+			result.Scores = append(result.Scores, emotions["surprise"])
+		}
+
 		if len(result.Labels) > 0 {
-			fmt.Println(result)
 			err := encoder.Encode(result)
 			if err != nil {
 				log.Fatal("Failed to encode the message and pass it to server: ", err)
